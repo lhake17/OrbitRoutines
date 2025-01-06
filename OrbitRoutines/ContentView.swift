@@ -1,86 +1,84 @@
-//
-//  ContentView.swift
-//  OrbitRoutines
-//
-//  Created by Laurin Hake on 06.01.25.
-//
-
 import SwiftUI
 import CoreData
 
 struct ContentView: View {
+    //sets up the environment context
     @Environment(\.managedObjectContext) private var viewContext
-
+    
+    // fetch all routines from CoreData
     @FetchRequest(
-        sortDescriptors: [NSSortDescriptor(keyPath: \Item.timestamp, ascending: true)],
-        animation: .default)
-    private var items: FetchedResults<Item>
-
+        sortDescriptors: [NSSortDescriptor(keyPath: \Routine.timestamp, ascending: true)],
+        animation: .bouncy)
+    private var routines: FetchedResults<Routine>
+    
     var body: some View {
         NavigationView {
-            List {
-                ForEach(items) { item in
-                    NavigationLink {
-                        Text("Item at \(item.timestamp!, formatter: itemFormatter)")
-                    } label: {
-                        Text(item.timestamp!, formatter: itemFormatter)
+            VStack {
+                if routines.isEmpty {
+                    Text("Keine Routinen verfügbar")
+                        .font(.title2)
+                        .foregroundColor(.gray)
+                        .padding()
+                } else {
+                    List {
+                        ForEach(routines) { routine in
+                            HStack {
+                                VStack(alignment: .leading) {
+                                    Text(routine.name ?? "Keine Beschreibung")
+                                        .font(.headline)
+                                    
+                                    Text(routine.timestamp ?? Date(), style: .date)
+                                        .font(.subheadline)
+                                        .foregroundColor(.secondary)
+                                }
+                            }
+                        }
+                        .onDelete(perform: deleteRoutine)
                     }
                 }
-                .onDelete(perform: deleteItems)
             }
+            .navigationTitle("Routinen")
             .toolbar {
                 ToolbarItem(placement: .navigationBarTrailing) {
-                    EditButton()
-                }
-                ToolbarItem {
-                    Button(action: addItem) {
-                        Label("Add Item", systemImage: "plus")
+                    Button(action: addRoutine) {
+                        Image(systemName: "plus")
                     }
                 }
-            }
-            Text("Select an item")
-        }
-    }
-
-    private func addItem() {
-        withAnimation {
-            let newItem = Item(context: viewContext)
-            newItem.timestamp = Date()
-
-            do {
-                try viewContext.save()
-            } catch {
-                // Replace this implementation with code to handle the error appropriately.
-                // fatalError() causes the application to generate a crash log and terminate. You should not use this function in a shipping application, although it may be useful during development.
-                let nsError = error as NSError
-                fatalError("Unresolved error \(nsError), \(nsError.userInfo)")
+                ToolbarItem(placement: .navigationBarLeading) {
+                    EditButton()
+                }
             }
         }
     }
-
-    private func deleteItems(offsets: IndexSet) {
-        withAnimation {
-            offsets.map { items[$0] }.forEach(viewContext.delete)
-
-            do {
-                try viewContext.save()
-            } catch {
-                // Replace this implementation with code to handle the error appropriately.
-                // fatalError() causes the application to generate a crash log and terminate. You should not use this function in a shipping application, although it may be useful during development.
-                let nsError = error as NSError
-                fatalError("Unresolved error \(nsError), \(nsError.userInfo)")
-            }
+    
+    // MARK: - Funktionen
+    
+    private func addRoutine() {
+        let newRoutine = Routine(context: viewContext)
+        newRoutine.timestamp = Date()
+        newRoutine.name = "TEST"
+        
+        do {
+            try viewContext.save()
+        } catch {
+            print("Fehler beim Speichern: \(error.localizedDescription)")
+        }
+    }
+    
+    private func deleteRoutine(at offsets: IndexSet) {
+        for index in offsets {
+            let routineToDelete = routines[index]
+            viewContext.delete(routineToDelete)
+        }
+        
+        do {
+            try viewContext.save()
+        } catch {
+            print("Fehler beim Löschen: \(error.localizedDescription)")
         }
     }
 }
 
-private let itemFormatter: DateFormatter = {
-    let formatter = DateFormatter()
-    formatter.dateStyle = .short
-    formatter.timeStyle = .medium
-    return formatter
-}()
-
 #Preview {
-    ContentView().environment(\.managedObjectContext, PersistenceController.preview.container.viewContext)
+    ContentView()
 }
